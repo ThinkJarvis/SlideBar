@@ -1,9 +1,7 @@
 package com.gome.slidebar;
 
-
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -17,10 +15,12 @@ import android.widget.TextView;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
-public class MainActivity extends AppCompatActivity implements Sidebar.OnSelectIndexItemListener, ComputeScrollRecycleView.OnScrollLetterListener {
+import static com.gome.slidebar.LetterFlagView.VIEW_TAG_FIRST;
+import static com.gome.slidebar.LetterFlagView.VIEW_TAG_NEXT;
+
+public class MainActivity1 extends AppCompatActivity implements Sidebar.OnSelectIndexItemListener, ComputeScrollRecycleView.OnScrollLetterListener {
 
     private TreeMap<String, List<String>> mContactMap;
     private LinearLayoutManager mLinearLayoutManager;
@@ -52,7 +52,6 @@ public class MainActivity extends AppCompatActivity implements Sidebar.OnSelectI
         mComputeScrollRecycleView.setOnScrollLetterListener(this);
         mComputeScrollRecycleView.setLayoutManager(mLinearLayoutManager);
         mComputeScrollRecycleView.setAdapter(mRecycleAdapter);
-        ScrollHelper scrollHelper = new ScrollHelper(mComputeScrollRecycleView,mLinearLayoutManager,mLetterFlagView);
     }
 
     @Override
@@ -63,12 +62,120 @@ public class MainActivity extends AppCompatActivity implements Sidebar.OnSelectI
     @Override
     public void onCurrentLetter(String tag) {
         mSidebar.updateCurrentIndexByScroll(tag);
-        TextView letterFlag = mLetterFlagView.findLetterFlag(LetterFlagView.VIEW_TYPE.normal);
+        TextView letterFlag = mLetterFlagView.findLetterFlag(VIEW_TAG_FIRST);
         if (letterFlag != null) {
             letterFlag.setText(tag);
         }
     }
 
+//    @Override
+//    public void onLetterScrollUp() {
+//        scrollUp(mLetterFlagView);
+//    }
+//
+//    @Override
+//    public void onLetterScrollDown() {
+//        scrollDown(mLetterFlagView);
+//    }
+
+    private void scrollUp(LetterFlagView parent) {
+        float translationY = 0f;
+        if (mLinearLayoutManager != null) {
+            int firstVisibleItem = mLinearLayoutManager.findFirstVisibleItemPosition();
+            int lastVisibleItem = mLinearLayoutManager.findLastVisibleItemPosition();
+            int nextVisibleItem = 1;
+            if (nextVisibleItem > lastVisibleItem) {
+                return;
+            }
+
+            View view = mLinearLayoutManager.getChildAt(nextVisibleItem);
+            if (view == null) {
+                return;
+            }
+
+            TextView textView = (TextView) view.findViewById(R.id.letter);
+            if (view.getTop() <= 40f) {
+                float percent = 1 - view.getTop() / 40f;
+                Log.e("lion", "scrollUp = " + textView.getText() + " | " + view.getTop() + " | " + percent);
+                View nextLetterFlagView = parent.findViewWithTag(VIEW_TAG_NEXT);
+                if (nextLetterFlagView == null) {
+                    nextLetterFlagView = parent.addLetterFlagItem(VIEW_TAG_NEXT);
+                }
+
+                TextView nextLetterFlagTextView = (TextView) nextLetterFlagView.findViewById(R.id.letter_flag);
+                nextLetterFlagTextView.setBackgroundColor(Utils.calculateColor(Color.parseColor("#f1f0f5"), Color.parseColor("#ffffff"), percent));
+                nextLetterFlagTextView.setTextColor(Utils.calculateColor(Color.parseColor("#000000"), Color.parseColor("#51b038"), percent));
+                nextLetterFlagTextView.setText(textView.getText());
+                translationY = view.getTop() - 40;
+                parent.setTranslationY(translationY);
+            }
+
+            if (mLastFirstVisibleItem != firstVisibleItem) {
+                parent.setTranslationY(-translationY);
+                parent.removeView(parent.findLetterItem(VIEW_TAG_NEXT));
+                mLastFirstVisibleItem = firstVisibleItem;
+            }
+        }
+    }
+
+    private void scrollDown(LetterFlagView parent) {
+        float translationY = 0f;
+        if (mLinearLayoutManager != null) {
+            int firstVisibleItem = mLinearLayoutManager.findFirstVisibleItemPosition();
+            int lastVisibleItem = mLinearLayoutManager.findLastVisibleItemPosition();
+
+
+            View firstView = mLinearLayoutManager.getChildAt(firstVisibleItem);
+
+            if (firstView == null) {
+                return;
+            }
+
+//            View view = mComputeScrollRecycleView.findChildViewUnder(firstView.getLeft(), firstView.getBottom() - 40);
+//
+//            if (view != null) {
+//                Log.e("xly","view.getTag() = " + view.getTag());
+//            }
+
+            if (1 > lastVisibleItem) {
+                return;
+            }
+            View nextView = mLinearLayoutManager.getChildAt(1);
+
+            if (nextView == null) {
+                return;
+            }
+
+            TextView textView = (TextView) nextView.findViewById(R.id.letter);
+            float scrollY = firstView.getHeight() +  firstView.getTop();
+            if (scrollY <= 40f) {
+                float percent = scrollY / 40f;
+//                Log.e("lion", "scrollDown = " + textView.getText() + " | " + scrollY + " | " + percent);
+                View nextLetterFlagView = parent.findViewWithTag(VIEW_TAG_NEXT);
+                if (nextLetterFlagView == null) {
+                    nextLetterFlagView = parent.addLetterFlagItem(VIEW_TAG_NEXT);
+                    parent.setTranslationY(-40f);
+                }
+
+                TextView nextLetterFlagTextView = (TextView) nextLetterFlagView.findViewById(R.id.letter_flag);
+                nextLetterFlagTextView.setBackgroundColor(Utils.calculateColor(Color.parseColor("#ffffff"), Color.parseColor("#f1f0f5") , percent));
+                nextLetterFlagTextView.setTextColor(Utils.calculateColor(Color.parseColor("#51b038"), Color.parseColor("#000000"), percent));
+                nextLetterFlagTextView.setText(textView.getText());
+                parent.setTranslationY(-40f + scrollY);
+
+                if (scrollY == 40) {
+                    parent.removeView(parent.findLetterItem(VIEW_TAG_NEXT));
+                    mLastFirstVisibleItem = firstVisibleItem;
+                }
+
+            }
+
+//            if (mLastFirstVisibleItem != firstVisibleItem) {
+//                parent.removeView(parent.findLetterItem(VIEW_TAG_NEXT));
+//                mLastFirstVisibleItem = firstVisibleItem;
+//            }
+        }
+    }
 
     private class RecycleAdapter extends RecyclerView.Adapter<RecycleViewHolder> {
 
